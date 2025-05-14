@@ -2,12 +2,13 @@ const bcrypt = require('bcryptjs');
 const pool = require('../config/database');
 
 class User {
-  static async create({ email, nome, perfil, senha, cpf }) {
+  static async create({ cpf, username, email, password, role }) {
+
     try {
-      const hashedPassword = await bcrypt.hash(senha, 10);
+      const hashedPassword = await bcrypt.hash(password, 10);
       const [result] = await pool.query(
-        'INSERT INTO usuarios (email, nome, perfil, senha, cpf) VALUES (?, ?, ?, ?, ?)',
-        [email, nome, perfil, hashedPassword, cpf]
+        'INSERT INTO users (cpf, username, email, password, role) VALUES (?, ?, ?, ?, ?)',
+        [cpf, username, email, hashedPassword, role]
 
       );
       return result.insertId;
@@ -19,7 +20,7 @@ class User {
   static async findByEmail(email) {
     try {
       const [rows] = await pool.query(
-        'SELECT * FROM usuarios WHERE email = ?',
+        'SELECT * FROM users WHERE email = ?',
         [email]
       );
       return rows[0]; // Retorna o primeiro usuário encontrado (ou null)
@@ -28,14 +29,14 @@ class User {
     }
   }
 
-  static async update(id, { nome, email, senha }) {
+  static async update(id, { username, email, password }) {
     try {
-      let query = 'UPDATE usuarios SET nome = ?, email = ?';
-      const params = [nome, email];
+      let query = 'UPDATE users SET username = ?, email = ?';
+      const params = [username, email];
 
-      if (senha) {
-        const hashedPassword = await bcrypt.hash(senha, 10);
-        query += ', senha = ?';
+      if (password) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        query += ', password = ?';
         params.push(hashedPassword);
       }
 
@@ -43,7 +44,7 @@ class User {
       params.push(id);
 
       const [result] = await pool.query(query, params);
-      return result.affectedRows > 0; 
+      return result.affectedRows > 0;
     } catch (error) {
       throw new Error('Erro ao atualizar usuário: ' + error.message);
     }
@@ -52,7 +53,7 @@ class User {
   static async findById(id) {
     try {
       const [rows] = await pool.query(
-        'SELECT id, email, nome, perfil, senha, cpf FROM usuarios WHERE id = ?',
+        'SELECT id, cpf, username, email, password, role FROM users WHERE id = ?',
         [id]
       );
       return rows[0];
@@ -64,7 +65,7 @@ class User {
   static async findAll() {
     try {
       const [rows] = await pool.query(
-        'SELECT id, email, nome, perfil, senha, cpf FROM usuarios'
+        'SELECT id, cpf, username, email, password, role FROM users'
       );
       return rows;
     } catch (error) {
@@ -75,7 +76,7 @@ class User {
   static async delete(id) {
     try {
       const [result] = await pool.query(
-        'DELETE FROM usuarios WHERE id = ?',
+        'DELETE FROM users WHERE id = ?',
         [id]
       );
       return result.affectedRows > 0;
