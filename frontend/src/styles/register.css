@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+
+body {
+  background: linear-gradient(to right, #d6d6d6, #c2c2c2, #a1a1a1);
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.box {
+  background-color: whitesmoke;
+  box-shadow: 0px 0px 10px 10px #bababa;
+  width: 600px;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 20px;
+}
+
+h1 {
+  color: #c91804;
+  font-family: "Inter", sans-serif;
+  user-select: none;
+}
+
+.form {
+  color: #c91804;
+  font-family: "Inter", sans-serif;
+  font-weight: bolder;
+}
+
+
+input {
+  border: none;
+  border-radius: 20px;
+  width: 200px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  background-color: #d1d1d1;
+}
+
+button {
+  color: antiquewhite;
+  background-color: #c91804;
+  font-family: "Inter", sans-serif;
+  border: none;
+  width: 100px;
+  height: 30px;
+  font-size: 15px;
+  border-radius: 20px;
+  margin: 20px;
+  user-select: none;
+  cursor: pointer;
+}
+
+select {
+  color: antiquewhite;
+  background-color: #ba3636;
+  font-family: "Inter", sans-serif;
+  border: none;
+  width: 100px;
+  height: 30px;
+  font-size: 15px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.submitButton {
+  color: antiquewhite;
+  background-color: #c91804;
+  font-family: "Inter", sans-serif;
+  border: none;
+  width: 100px;
+  height: 30px;
+  font-size: 15px;
+  border-radius: 20px;
+  margin: 20px;
+  user-select: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 50px;
+}
+
+.backButton {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  background-color: #d6d6d6;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #c91804;
+  border-radius: 10px;
+  box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.3);
+}
