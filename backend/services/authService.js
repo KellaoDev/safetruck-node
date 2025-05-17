@@ -1,7 +1,7 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User = require('../models/UserModel');
 
 async function registerUser({ cpf, username, email, password, role }) {
   const existing = await User.findByEmail(email);
@@ -23,7 +23,11 @@ async function registerUser({ cpf, username, email, password, role }) {
 
 async function loginUser(email, password) {
   const user = await User.findByEmail(email);
+
   if (!user) throw { status: 401, message: 'Usuário não encontrado' };
+
+  console.log('Usuário retornado:', user);
+
 
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) throw { status: 401, message: 'Senha incorreta' };

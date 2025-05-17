@@ -3,7 +3,6 @@ const pool = require('../config/database');
 
 class User {
   static async create({ cpf, username, email, password, role }) {
-
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
       const [result] = await pool.query(
@@ -85,6 +84,5 @@ class User {
     }
   }
 }
-
 
 module.exports = User;
