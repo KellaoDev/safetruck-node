@@ -26,13 +26,8 @@ async function loginUser(email, password) {
 
   if (!user) throw { status: 401, message: 'Usuário não encontrado' };
 
-  console.log('Usuário retornado:', user);
-
-
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) throw { status: 401, message: 'Senha incorreta' };
-
-  console.log(process.env.JWT_SECRET)
   
   const token = jwt.sign(
     { id: user.id, role: user.role },

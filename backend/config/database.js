@@ -6,7 +6,7 @@ const pool = mysql.createPool({
   password: 'root',
   database: 'safetruck',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 30,
   queueLimit: 0
 });
 
