@@ -14,10 +14,10 @@ function authenticateToken(req, res, next) {
   });
 }
 
-function authorizeRole(role) {
+function authorizeRole(allowedRoles) {
   return (req, res, next) => {
-    if (req.user.role !== role) {
-      return res.sendStatus(403);
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Acesso não autorizado' });
     }
     next();
   };

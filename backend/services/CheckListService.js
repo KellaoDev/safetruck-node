@@ -1,98 +1,267 @@
 const Checklist = require('../models/CheckListModel');
+const pool = require('../config/database');
 
-async function createCheckList({ user_id, plates, headlights, brakes, tires, status = 'pending' }) {
+class ChecklistService {
+  static async create({ user_id, plates, headlights, brakes, tires }) {
     try {
-        const date_checklist = new Date().toISOString().split('T')[0];
+      if (!user_id || isNaN(user_id)) {
+        throw { type: 'VALIDATION_ERROR', message: 'ID de usuário inválido', statusCode: 400 }
+      }
 
-        const checklistId = await Checklist.create({
-            user_id,
-            plates,
-            headlights,
-            brakes,
-            tires,
-            date_checklist,
-            status
-        });
+      if (!plates || !user_id) {
+        throw { type: 'ValidationError', message: 'Placas e ID do usuário são obrigatórios' }
+      }
 
-        return {
-            success: true,
-            message: 'CheckList criado com sucesso',
-            data: { checklistId }
-        };
 
+      const needsMaintenance = !headlights || !brakes || !tires
+      const status = needsMaintenance ? 'maintenance' : 'pending'
+
+      const date_checklist = this.formatDate(new Date())
+
+      const checklistId = await Checklist.create({
+        user_id,
+        plates,
+        headlights,
+        brakes,
+        tires,
+        date_checklist,
+        status
+      })
+
+      const createdChecklist = await Checklist.findByUserId(checklistId)
+
+      return {
+        success: true,
+        message: needsMaintenance
+          ? 'Checklist criado e enviado para manutenção'
+          : 'Checklist criado com sucesso',
+        data: {
+          id: checklistId,
+          status: createdChecklist.status,
+          needsMaintenance,
+          plates,
+          headlights,
+          brakes,
+          tires
+        }
+      }
     } catch (error) {
-        console.error('Erro em createCheckList:', error);
-        return {
-            success: false,
-            message: 'Falha ao criar Checklist',
-            error: error.message
-        };
+      console.error('Erro em ChecklistService.create:', error)
+      throw this.handleError(error, 'Falha ao criar Checklist')
     }
+  }
+
+  static async approveMaintenance(checklist_id, user_id) {
+    let connection
+    try {
+      connection = await pool.getConnection()
+      await connection.beginTransaction()
+
+      const checklist = await Checklist.findByIdForUpdate(checklist_id, connection)
+      if (!checklist) {
+        throw { type: 'NotFoundError', message: 'Checklist não encontrado' }
+      }
+      if (checklist.user_id !== user_id) {
+        throw { type: 'AUTH_ERROR', message: 'Sem permissão para marcar como devolvido', statusCode: 403 }
+      }
+      if (checklist.status !== 'maintenance') {
+        throw { type: 'BusinessError', message: 'Checklist não está em status de manutenção' }
+      }
+
+      const affectedRows = await Checklist.updateStatus(checklist_id, 'pending', connection)
+
+      if (affectedRows === 0) {
+        throw { type: 'UpdateError', message: 'Falha ao atualizar o checklist' }
+      }
+
+      await connection.commit()
+
+      return {
+        success: true,
+        data: {
+          checklist_id,
+          message: 'Checklist aprovado e liberado com sucesso'
+        }
+      }
+    } catch (error) {
+      if (connection) await connection.rollback()
+      console.error('Error in CheckListService.approveMaintenance:', error)
+      throw error
+    } finally {
+      if (connection) connection.release()
+    }
+  }
+  static async findAll() {
+    try {
+      const checklists = await Checklist.findAll()
+
+      return {
+        success: true,
+        message: checklists.length > 0
+          ? 'Checklists encontrados'
+          : 'Nenhum checklist encontrado',
+        data: checklists,
+        metadata: {
+          total: checklists.length,
+          byStatus: {
+            pending: checklists.filter(c => c.status === 'pending').length,
+            maintenance: checklists.filter(c => c.status === 'maintenance').length,
+            released: checklists.filter(c => c.status === 'released').length,
+            returned: checklists.filter(c => c.status === 'returned').length
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro em ChecklistService.findAll:', error)
+      throw this.handleError(error, 'Falha ao buscar todos os checklists')
+    }
+  }
+
+  static async findByUserId(user_id) {
+    try {
+      if (!user_id || isNaN(user_id)) {
+        throw { type: 'VALIDATION_ERROR', message: 'ID de usuário inválido', statusCode: 400 }
+      }
+
+      const checklists = await Checklist.findByUserId(user_id)
+
+      return {
+        success: true,
+        message: checklists.length > 0 ? 'Checklists encontrados' : 'Nenhum checklist encontrado',
+        data: checklists,
+        metadata: {
+          total: checklists.length,
+          pending: checklists.filter(c => c.status === 'pending').length,
+          released: checklists.filter(c => c.status === 'released').length,
+          returned: checklists.filter(c => c.status === 'returned').length
+        }
+      }
+    } catch (error) {
+      console.error('Erro em ChecklistService.findByUserId:', error)
+      throw this.handleError(error, 'Falha ao buscar checklists')
+    }
+  }
+
+  static async release(checklist_id, user_id) {
+    try {
+      const checklist = await Checklist.findByIdForUpdate(checklist_id)
+
+      if (!checklist) {
+        throw { type: 'NOT_FOUND', message: 'Checklist não encontrado', statusCode: 404 }
+      }
+
+      if (checklist.user_id !== user_id) {
+        throw { type: 'AUTH_ERROR', message: 'Sem permissão para liberar este checklist', statusCode: 403 }
+      }
+
+      if (checklist.status !== 'pending') {
+        throw {
+          type: 'BUSINESS_ERROR',
+          message: `Checklist não pode ser liberado. Status atual: ${checklist.status}`,
+          statusCode: 400
+        }
+      }
+
+      const date_released = this.formatDate(new Date())
+      await Checklist.updateStatus(checklist_id, 'released')
+
+      const controlId = await Checklist.createControlRecord({
+        checklist_id,
+        user_id,
+        date_released,
+        date_returned: null
+      })
+
+      return {
+        success: true,
+        message: 'Checklist liberado com sucesso',
+        data: {
+          checklist_id,
+          control_id: controlId,
+          date_released,
+          status: 'released'
+        }
+      }
+    } catch (error) {
+      console.error('Erro em ChecklistService.release:', error)
+      throw this.handleError(error, 'Falha ao liberar checklist')
+    }
+  }
+
+  static async return(checklist_id, user_id) {
+    let connection
+    try {
+      connection = await pool.getConnection()
+      await connection.beginTransaction()
+
+      const checklist = await Checklist.findByIdForUpdate(checklist_id, connection)
+
+      if (!checklist) {
+        throw { type: 'NOT_FOUND', message: 'Checklist não encontrado', statusCode: 404 }
+      }
+
+      if (checklist.user_id !== user_id) {
+        throw { type: 'AUTH_ERROR', message: 'Sem permissão para marcar como devolvido', statusCode: 403 }
+      }
+
+      if (checklist.status !== 'released') {
+        throw {
+          type: 'BUSINESS_ERROR',
+          message: `Checklist não pode ser devolvido. Status atual: ${checklist.status}`,
+          statusCode: 400
+        }
+      }
+
+      const date_returned = this.formatDate(new Date())
+
+      const affectedRows = await Checklist.updateStatus(checklist_id, 'returned', connection)
+
+      if (affectedRows === 0) {
+        throw { type: 'UpdateError', message: 'Falha ao atualizar o checklist' }
+      }
+
+      await connection.commit()
+
+
+      const controlRecord = await Checklist.findControlRecord(checklist_id)
+      if (controlRecord) {
+        await Checklist.updateControlRecord({ checklist_id, date_returned })
+      } else {
+        await Checklist.createControlRecord({
+          checklist_id,
+          user_id,
+          date_released: null,
+          date_returned
+        })
+      }
+
+      return {
+        success: true,
+        message: 'Checklist marcado como devolvido com sucesso',
+        data: {
+          checklist_id,
+          date_returned,
+          status: 'returned'
+        }
+      }
+    } catch (error) {
+      console.error('Erro em ChecklistService.return:', error)
+      throw this.handleError(error, 'Falha ao marcar checklist como devolvido')
+    }
+  }
+
+  static formatDate(date) {
+    date.setHours(date.getHours() - 3)
+    return date.toISOString().replace('T', ' ').replace(/\..+/, '')
+  }
+
+  static handleError(error, defaultMessage) {
+    return {
+      type: error.type || 'INTERNAL_ERROR',
+      message: error.message || defaultMessage,
+      statusCode: error.statusCode || 500
+    }
+  }
 }
 
-async function findCheckListsByUserId(user_id) {
-    try {
-        const checklists = await Checklist.findByUserId(user_id);
-
-        return {
-            success: true,
-            message: checklists.length > 0
-                ? 'Checklists encontrados'
-                : 'Nenhum checklist encontrado para este usuário',
-            data: checklists,
-            count: checklists.length,
-            metadata: {
-                pending: checklists.filter(c => c.status === 'pending').length,
-                approved: checklists.filter(c => c.status === 'approved').length,
-                rejected: checklists.filter(c => c.status === 'rejected').length
-            }
-        };
-
-    } catch (error) {
-        console.error('Erro em findCheckListsByUserId:', error);
-        return {
-            success: false,
-            message: 'Falha ao buscar checklists',
-            error: error.message
-        };
-    }
-}
-
-async function liberationChecklist(checklist_id, user_id) {
-    try {
-        const date_liberation = new Date().toISOString().split('T')[0];
-        const result = await Checklist.updateStatus(checklist_id, user_id, date_liberation);
-
-        // 2. Se chegou aqui, a operação foi bem-sucedida
-        return {
-            success: true,
-            message: 'Checklist liberado com sucesso',
-            data: {
-                checklist_id: result.checklist_id,
-                control_id: result.control_id,
-                date_liberation: result.date_liberation,
-                status: 'released',
-                released_by: user_id
-            }
-        };
-    } catch (error) {
-        console.error('Erro no ChecklistService.releaseChecklist:', {
-            error: error.message,
-            checklist_id,
-            user_id,
-            stack: error.stack
-        });
-        return {
-            success: false,
-            type: error.type || 'INTERNAL_ERROR',
-            message: error.message || 'Erro ao liberar checklist',
-            statusCode: error.statusCode || 500
-        };
-    }
-}
-
-module.exports = {
-    createCheckList,
-    findCheckListsByUserId,
-    liberationChecklist
-};
+module.exports = ChecklistService;
