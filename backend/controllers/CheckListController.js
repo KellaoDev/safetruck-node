@@ -96,6 +96,54 @@ const ChecklistController = {
     }
   },
 
+  async getPendingChecklists(req, res) {
+    try {
+      const result = await ChecklistService.getPendingChecklists();
+
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error('Error in ChecklistController.getPendingChecklists:', error);
+
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erro interno no servidor',
+        details: error.type || 'UnknownError'
+      });
+    }
+  },
+
+  async getReleaseChecklists(req, res) {
+    try {
+      const result = await ChecklistService.getReleaseChecklists();
+
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error('Error in ChecklistController.getReleaseChecklists:', error);
+
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erro interno no servidor',
+        details: error.type || 'UnknownError'
+      });
+    }
+  },
+
+  async getReturnChecklists(req, res) {
+    try {
+      const result = await ChecklistService.getReturnChecklists();
+
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error('Error in ChecklistController.getReturnChecklists:', error);
+
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erro interno no servidor',
+        details: error.type || 'UnknownError'
+      });
+    }
+  },
+
   async release(req, res) {
     try {
       const { checklist_id } = req.body

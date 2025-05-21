@@ -37,14 +37,43 @@ class Checklist {
     return rows
   }
 
-  static async create({ user_id, plates, headlights, brakes, tires, date_checklist, status }) {
-    const [result] = await pool.query(
-      `INSERT INTO checklist 
-       (user_id, plates, headlights, brakes, tires, date_checklist, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [user_id, plates, headlights, brakes, tires, date_checklist, status]
+  static async getPendingChecklists(status = 'pending') {
+    const [rows] = await pool.query(
+      `SELECT 
+        id,
+        user_id,
+        status
+       FROM checklist 
+       WHERE status = ?`,
+      [status]
     )
-    return result.insertId
+    return rows
+  }
+
+  static async getReleaseChecklists(status = 'released') {
+    const [rows] = await pool.query(
+      `SELECT 
+        id,
+        user_id,
+        status
+       FROM checklist 
+       WHERE status = ?`,
+      [status]
+    )
+    return rows
+  }
+
+  static async getReturnChecklists(status = 'returned') {
+    const [rows] = await pool.query(
+      `SELECT 
+        id,
+        user_id,
+        status
+       FROM checklist 
+       WHERE status = ?`,
+      [status]
+    )
+    return rows
   }
 
   static async findByIdForUpdate(checklist_id) {
@@ -54,12 +83,23 @@ class Checklist {
     )
     return checklist[0]
   }
-  static async updateStatus(checklist_id, status) {
-    const [result] = await pool.query(
-      `UPDATE checklist SET status = ? WHERE id = ?`,
-      [status, checklist_id]
+
+  static async findControlRecord(checklist_id) {
+    const [record] = await pool.query(
+      `SELECT id FROM CONTROL WHERE checklist_id = ?`,
+      [checklist_id]
     )
-    return result.affectedRows
+    return record[0]
+  }
+
+  static async create({ user_id, plates, headlights, brakes, tires, date_checklist, status }) {
+    const [result] = await pool.query(
+      `INSERT INTO checklist 
+       (user_id, plates, headlights, brakes, tires, date_checklist, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [user_id, plates, headlights, brakes, tires, date_checklist, status]
+    )
+    return result.insertId
   }
 
   static async createControlRecord({ checklist_id, user_id, date_released, date_returned }) {
@@ -72,20 +112,20 @@ class Checklist {
     return result.insertId
   }
 
+  static async updateStatus(checklist_id, status) {
+    const [result] = await pool.query(
+      `UPDATE checklist SET status = ? WHERE id = ?`,
+      [status, checklist_id]
+    )
+    return result.affectedRows
+  }
+
   static async updateControlRecord({ checklist_id, date_returned }) {
     const [result] = await pool.query(
       `UPDATE CONTROL SET date_returned = ? WHERE checklist_id = ?`,
       [date_returned, checklist_id]
     )
     return result.affectedRows
-  }
-
-  static async findControlRecord(checklist_id) {
-    const [record] = await pool.query(
-      `SELECT id FROM CONTROL WHERE checklist_id = ?`,
-      [checklist_id]
-    )
-    return record[0]
   }
 }
 

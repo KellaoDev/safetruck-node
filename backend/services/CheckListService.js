@@ -142,6 +142,87 @@ class ChecklistService {
     }
   }
 
+  static async getPendingChecklists() {
+    try {
+      const pendingChecklists = await Checklist.getPendingChecklists();
+
+      if (!pendingChecklists || pendingChecklists.length === 0) {
+        return {
+          success: true,
+          data: [],
+          message: 'Nenhum checklist pendente encontrado'
+        };
+      }
+
+      return {
+        success: true,
+        data: pendingChecklists,
+        message: 'Checklists pendentes recuperados com sucesso'
+      };
+    } catch (error) {
+      console.error('Error in ChecklistService.getPendingChecklists:', error);
+      throw {
+        type: 'InternalError',
+        message: 'Falha ao buscar checklists pendentes',
+        statusCode: 500
+      };
+    }
+  }
+
+  static async getReleaseChecklists() {
+    try {
+      const releaseChecklists = await Checklist.getReleaseChecklists();
+
+      if (!releaseChecklists || releaseChecklists.length === 0) {
+        return {
+          success: true,
+          data: [],
+          message: 'Nenhum checklist liberado encontrado'
+        };
+      }
+
+      return {
+        success: true,
+        data: releaseChecklists,
+        message: 'Checklists liberado recuperados com sucesso'
+      };
+    } catch (error) {
+      console.error('Error in ChecklistService.getReleaseChecklists:', error);
+      throw {
+        type: 'InternalError',
+        message: 'Falha ao buscar checklists liberado',
+        statusCode: 500
+      };
+    }
+  }
+
+  static async getReturnChecklists() {
+    try {
+      const returnChecklists = await Checklist.getReturnChecklists();
+
+      if (!returnChecklists || returnChecklists.length === 0) {
+        return {
+          success: true,
+          data: [],
+          message: 'Nenhum checklist retornado encontrado'
+        };
+      }
+
+      return {
+        success: true,
+        data: returnChecklists,
+        message: 'Checklists retornado recuperados com sucesso'
+      };
+    } catch (error) {
+      console.error('Error in ChecklistService.getReturnChecklists:', error);
+      throw {
+        type: 'InternalError',
+        message: 'Falha ao buscar checklists retornado',
+        statusCode: 500
+      };
+    }
+  }
+
   static async release(checklist_id, user_id) {
     try {
       const checklist = await Checklist.findByIdForUpdate(checklist_id)
