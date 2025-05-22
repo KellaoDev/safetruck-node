@@ -11,7 +11,7 @@ router.get('/checklists/return', authenticateToken, authorizeRole('admin'), chec
 router.post('/checklists', authenticateToken, authorizeRole('admin'), checklistController.create);
 router.post('/checklists/released', authenticateToken, authorizeRole('admin'), checklistController.release)
 router.post('/checklists/returned', authenticateToken, authorizeRole('admin'), checklistController.return)
-router.post('/checklists/approveMaintenance', authenticateToken, authorizeRole('admin'), checklistController.approveMaintenance)
+router.patch('/checklists/:checklist_id/approveMaintenance', authenticateToken, authorizeRole('admin'), checklistController.approveMaintenance)
 
 /*
 router.post(

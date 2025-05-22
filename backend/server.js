@@ -8,10 +8,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 // Rotas
-const authRoutes = require('./routes/auth')
+const authRoutes = require('./routes/AuthRoute')
 app.use(authRoutes);
 
-const checkListRoutes = require('./routes/checklist')
+const checkListRoutes = require('./routes/CheckListRoute')
 app.use(checkListRoutes)
 
 app.use((err, req, res, next) => {

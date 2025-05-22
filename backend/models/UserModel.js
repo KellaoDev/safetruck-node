@@ -2,85 +2,72 @@ const bcrypt = require('bcryptjs');
 const pool = require('../config/database');
 
 class User {
-  static async create({ cpf, username, email, password, role }) {
+  static async findAll(connection = null) {
     try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const [result] = await pool.query(
-        'INSERT INTO users (cpf, username, email, password, role) VALUES (?, ?, ?, ?, ?)',
-        [cpf, username, email, hashedPassword, role]
+      const query = `SELECT id, cpf, username, email, password, role 
+      FROM users`
 
-      );
-      return result.insertId;
+      const [rows] = connection ?
+        await connection.query(query) :
+        await pool.query(query)
+
+      return rows
     } catch (error) {
-      throw new Error('Erro ao criar usuário: ' + error.message);
+      throw error
     }
   }
 
-  static async findByEmail(email) {
+  static async findById(id, connection = null) {
     try {
-      const [rows] = await pool.query(
-        'SELECT * FROM users WHERE email = ?',
-        [email]
-      );
-      return rows[0]; // Retorna o primeiro usuário encontrado (ou null)
+      const query = `SELECT id, cpf, username, email, password, role 
+      FROM users 
+      WHERE id = ?`
+      const params = [id]
+
+      const [rows] = connection ?
+        await connection.query(query, params) :
+        await pool.query(query, params)
+
+      return rows[0]
     } catch (error) {
-      throw new Error('Erro ao buscar usuário: ' + error.message);
+      throw error
     }
   }
 
-  static async update(id, { username, email, password }) {
+  static async findByEmail(email, connection = null) {
     try {
-      let query = 'UPDATE users SET username = ?, email = ?';
-      const params = [username, email];
+      const query = `SELECT * 
+      FROM users 
+      WHERE email = ?`
+      const params = [email]
 
-      if (password) {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        query += ', password = ?';
-        params.push(hashedPassword);
-      }
+      const [rows] = connection ?
+        await connection.query(query, params) :
+        await pool.query(query, params)
 
-      query += ' WHERE id = ?';
-      params.push(id);
-
-      const [result] = await pool.query(query, params);
-      return result.affectedRows > 0;
+      return rows[0]
     } catch (error) {
-      throw new Error('Erro ao atualizar usuário: ' + error.message);
+      throw error
     }
   }
 
-  static async findById(id) {
+  static async create(insertData, connection = null) {
     try {
-      const [rows] = await pool.query(
-        'SELECT id, cpf, username, email, password, role FROM users WHERE id = ?',
-        [id]
-      );
-      return rows[0];
-    } catch (error) {
-      throw new Error('Erro ao buscar usuário por ID: ' + error.message);
-    }
-  }
+      const { cpf, username, email, password, role } = insertData
+      const hashedPassword = await bcrypt.hash(password, 10)
 
-  static async findAll() {
-    try {
-      const [rows] = await pool.query(
-        'SELECT id, cpf, username, email, password, role FROM users'
-      );
-      return rows;
-    } catch (error) {
-      throw new Error('Erro ao buscar todos os usuários: ' + error.message);
-    }
-  }
+      const query = `INSERT INTO users 
+      (cpf, username, email, password, role)
+       VALUES (?, ?, ?, ?, ?)`
+      const params = [cpf, username, email, hashedPassword, role]
 
-  static async delete(id) {
-    try {
-      const [result] = await pool.query(
-        'DELETE FROM users WHERE id = ?',
-        [id]
-      );
-      return result.affectedRows > 0;
+      const [rows] = connection ?
+        await connection.query(query, params) :
+        await pool.query(query, params)
+
+      return rows.insertId
     } catch (error) {
-      throw new Error('Erro ao deletar usuário: ' + error.message);
+      throw error
     }
   }
 }

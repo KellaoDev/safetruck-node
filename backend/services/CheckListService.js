@@ -2,95 +2,6 @@ const Checklist = require('../models/CheckListModel');
 const pool = require('../config/database');
 
 class ChecklistService {
-  static async create({ user_id, plates, headlights, brakes, tires }) {
-    try {
-      if (!user_id || isNaN(user_id)) {
-        throw { type: 'VALIDATION_ERROR', message: 'ID de usuário inválido', statusCode: 400 }
-      }
-
-      if (!plates || !user_id) {
-        throw { type: 'ValidationError', message: 'Placas e ID do usuário são obrigatórios' }
-      }
-
-
-      const needsMaintenance = !headlights || !brakes || !tires
-      const status = needsMaintenance ? 'maintenance' : 'pending'
-
-      const date_checklist = this.formatDate(new Date())
-
-      const checklistId = await Checklist.create({
-        user_id,
-        plates,
-        headlights,
-        brakes,
-        tires,
-        date_checklist,
-        status
-      })
-
-      const createdChecklist = await Checklist.findByUserId(checklistId)
-
-      return {
-        success: true,
-        message: needsMaintenance
-          ? 'Checklist criado e enviado para manutenção'
-          : 'Checklist criado com sucesso',
-        data: {
-          id: checklistId,
-          status: createdChecklist.status,
-          needsMaintenance,
-          plates,
-          headlights,
-          brakes,
-          tires
-        }
-      }
-    } catch (error) {
-      console.error('Erro em ChecklistService.create:', error)
-      throw this.handleError(error, 'Falha ao criar Checklist')
-    }
-  }
-
-  static async approveMaintenance(checklist_id, user_id) {
-    let connection
-    try {
-      connection = await pool.getConnection()
-      await connection.beginTransaction()
-
-      const checklist = await Checklist.findByIdForUpdate(checklist_id, connection)
-      if (!checklist) {
-        throw { type: 'NotFoundError', message: 'Checklist não encontrado' }
-      }
-      if (checklist.user_id !== user_id) {
-        throw { type: 'AUTH_ERROR', message: 'Sem permissão para marcar como devolvido', statusCode: 403 }
-      }
-      if (checklist.status !== 'maintenance') {
-        throw { type: 'BusinessError', message: 'Checklist não está em status de manutenção' }
-      }
-
-      const affectedRows = await Checklist.updateStatus(checklist_id, 'pending', connection)
-
-      if (affectedRows === 0) {
-        throw { type: 'UpdateError', message: 'Falha ao atualizar o checklist' }
-      }
-
-      await connection.commit()
-
-      return {
-        success: true,
-        data: {
-          checklist_id,
-          message: 'Checklist aprovado e liberado com sucesso'
-        }
-      }
-    } catch (error) {
-      if (connection) await connection.rollback()
-      console.error('Error in CheckListService.approveMaintenance:', error)
-      throw error
-    } finally {
-      if (connection) connection.release()
-    }
-  }
   static async findAll() {
     try {
       const checklists = await Checklist.findAll()
@@ -112,18 +23,17 @@ class ChecklistService {
         }
       }
     } catch (error) {
-      console.error('Erro em ChecklistService.findAll:', error)
-      throw this.handleError(error, 'Falha ao buscar todos os checklists')
+      throw this.handleError(error, 'error ao buscar todos os checklists')
     }
   }
 
   static async findByUserId(user_id) {
     try {
+      const checklists = await Checklist.findByUserId(user_id)
+
       if (!user_id || isNaN(user_id)) {
         throw { type: 'VALIDATION_ERROR', message: 'ID de usuário inválido', statusCode: 400 }
       }
-
-      const checklists = await Checklist.findByUserId(user_id)
 
       return {
         success: true,
@@ -137,94 +47,136 @@ class ChecklistService {
         }
       }
     } catch (error) {
-      console.error('Erro em ChecklistService.findByUserId:', error)
-      throw this.handleError(error, 'Falha ao buscar checklists')
+      throw this.handleError(error, 'error ao buscar checklist por usuario')
+    }
+  }
+
+  static async findByIdForUpdate(checklist_id, user_id = null) {
+    try {
+      const checklist = await Checklist.findByIdForUpdate(checklist_id)
+
+      if (!user_id || isNaN(user_id)) {
+        throw { type: 'VALIDATION_ERROR', message: 'ID de usuário inválido', statusCode: 400 }
+      }
+
+      if (!checklist_id || isNaN(checklist_id)) {
+        throw { type: 'VALIDATION_ERROR', message: 'ID de checklist inválido', statusCode: 400 }
+      }
+
+      if (!checklist) {
+        throw { type: 'NOT_FOUND_ERROR', message: 'Checklist não encontrado', statusCode: 404 }
+      }
+
+      return {
+        success: true,
+        message: 'Checklist encontrado com sucesso',
+        data: checklist
+      }
+    } catch (error) {
+      throw this.handleError(error, 'error ao buscar checklist')
     }
   }
 
   static async getPendingChecklists() {
     try {
-      const pendingChecklists = await Checklist.getPendingChecklists();
+      const pendingChecklists = await Checklist.getPendingChecklists()
 
       if (!pendingChecklists || pendingChecklists.length === 0) {
-        return {
-          success: true,
-          data: [],
-          message: 'Nenhum checklist pendente encontrado'
-        };
+        throw { success: true, data: [], message: 'Nenhum checklist pendente encontrado' }
       }
 
       return {
         success: true,
         data: pendingChecklists,
         message: 'Checklists pendentes recuperados com sucesso'
-      };
+      }
     } catch (error) {
-      console.error('Error in ChecklistService.getPendingChecklists:', error);
-      throw {
-        type: 'InternalError',
-        message: 'Falha ao buscar checklists pendentes',
-        statusCode: 500
-      };
+      throw this.handleError(error, 'error ao buscar checklists pendentes')
     }
   }
 
   static async getReleaseChecklists() {
     try {
-      const releaseChecklists = await Checklist.getReleaseChecklists();
+      const releaseChecklists = await Checklist.getReleaseChecklists()
 
       if (!releaseChecklists || releaseChecklists.length === 0) {
-        return {
-          success: true,
-          data: [],
-          message: 'Nenhum checklist liberado encontrado'
-        };
+        throw { success: true, data: [], message: 'Nenhum checklist liberado encontrado' }
       }
 
       return {
         success: true,
         data: releaseChecklists,
         message: 'Checklists liberado recuperados com sucesso'
-      };
+      }
     } catch (error) {
-      console.error('Error in ChecklistService.getReleaseChecklists:', error);
-      throw {
-        type: 'InternalError',
-        message: 'Falha ao buscar checklists liberado',
-        statusCode: 500
-      };
+      throw this.handleError(error, 'error ao buscar checklists liberados')
     }
   }
 
   static async getReturnChecklists() {
     try {
-      const returnChecklists = await Checklist.getReturnChecklists();
+      const returnChecklists = await Checklist.getReturnChecklists()
 
       if (!returnChecklists || returnChecklists.length === 0) {
-        return {
-          success: true,
-          data: [],
-          message: 'Nenhum checklist retornado encontrado'
-        };
+        throw { success: true, data: [], message: 'Nenhum checklist retornado encontrado' }
       }
 
       return {
         success: true,
         data: returnChecklists,
         message: 'Checklists retornado recuperados com sucesso'
-      };
+      }
     } catch (error) {
-      console.error('Error in ChecklistService.getReturnChecklists:', error);
-      throw {
-        type: 'InternalError',
-        message: 'Falha ao buscar checklists retornado',
-        statusCode: 500
-      };
+      throw this.handleError(error, 'error ao buscar checklists retornados')
+    }
+  }
+
+  static async create({ user_id, plates, headlights, brakes, tires }) {
+    try {
+      const createdChecklist = await Checklist.findByUserId(checklistId)
+
+      if (!user_id || isNaN(user_id)) {
+        throw { type: 'VALIDATION_ERROR', message: 'ID de usuário inválido', statusCode: 400 }
+      }
+
+      if (!tires || !brakes || !headlights || !plates || !user_id) {
+        throw { type: 'ValidationError', message: 'Todos os items são obrigatórios' }
+      }
+
+      const needsMaintenance = !headlights || !brakes || !tires
+      const status = needsMaintenance ? 'maintenance' : 'pending'
+      const date_checklist = this.formatDate(new Date())
+
+      const checklistId = await Checklist.create({
+        user_id,
+        plates,
+        headlights,
+        brakes,
+        tires,
+        date_checklist,
+        status
+      })
+
+      return {
+        success: true,
+        message: needsMaintenance
+          ? 'Checklist criado e enviado para manutenção'
+          : 'Checklist criado com sucesso',
+        data: {
+          createdChecklist
+        }
+      }
+    } catch (error) {
+      throw this.handleError(error, 'error ao criar checklist')
     }
   }
 
   static async release(checklist_id, user_id) {
+    let connection
     try {
+      connection = await pool.getConnection()
+      await connection.beginTransaction()
+
       const checklist = await Checklist.findByIdForUpdate(checklist_id)
 
       if (!checklist) {
@@ -236,15 +188,17 @@ class ChecklistService {
       }
 
       if (checklist.status !== 'pending') {
-        throw {
-          type: 'BUSINESS_ERROR',
-          message: `Checklist não pode ser liberado. Status atual: ${checklist.status}`,
-          statusCode: 400
-        }
+        throw { type: 'BUSINESS_ERROR', message: `Checklist não pode ser liberado. Status atual: ${checklist.status}`, statusCode: 400 }
       }
 
       const date_released = this.formatDate(new Date())
-      await Checklist.updateStatus(checklist_id, 'released')
+      const affectedRows = await Checklist.updateStatus(checklist_id, 'released')
+
+      if (affectedRows === 0) {
+        throw { type: 'UpdateError', message: 'error ao atualizar o checklist' }
+      }
+
+      await connection.commit()
 
       const controlId = await Checklist.createControlRecord({
         checklist_id,
@@ -264,8 +218,7 @@ class ChecklistService {
         }
       }
     } catch (error) {
-      console.error('Erro em ChecklistService.release:', error)
-      throw this.handleError(error, 'Falha ao liberar checklist')
+      throw this.handleError(error, 'error ao marcar checklist como liberado')
     }
   }
 
@@ -286,23 +239,16 @@ class ChecklistService {
       }
 
       if (checklist.status !== 'released') {
-        throw {
-          type: 'BUSINESS_ERROR',
-          message: `Checklist não pode ser devolvido. Status atual: ${checklist.status}`,
-          statusCode: 400
-        }
+        throw { type: 'BUSINESS_ERROR', message: `Checklist não pode ser devolvido. Status atual: ${checklist.status}`, statusCode: 400 }
       }
 
       const date_returned = this.formatDate(new Date())
-
       const affectedRows = await Checklist.updateStatus(checklist_id, 'returned', connection)
 
       if (affectedRows === 0) {
-        throw { type: 'UpdateError', message: 'Falha ao atualizar o checklist' }
+        throw { type: 'UpdateError', message: 'error ao atualizar o checklist' }
       }
-
       await connection.commit()
-
 
       const controlRecord = await Checklist.findControlRecord(checklist_id)
       if (controlRecord) {
@@ -326,8 +272,64 @@ class ChecklistService {
         }
       }
     } catch (error) {
-      console.error('Erro em ChecklistService.return:', error)
-      throw this.handleError(error, 'Falha ao marcar checklist como devolvido')
+      throw this.handleError(error, 'error ao marcar checklist como retornado')
+    }
+  }
+
+  static async approveMaintenance(checklist_id, user_id, updateData = null) {
+    let connection
+    try {
+      connection = await pool.getConnection()
+      await connection.beginTransaction()
+
+      const checklist = await Checklist.findByIdForUpdate(checklist_id, connection)
+      if (!checklist) {
+        throw { type: 'NotFoundError', message: 'Checklist não encontrado' }
+      }
+      if (checklist.user_id !== user_id) {
+        throw { type: 'AUTH_ERROR', message: 'Sem permissão para marcar como devolvido', statusCode: 403 }
+      }
+      if (!checklist_id || isNaN(checklist_id)) {
+        throw { type: 'ValidationError', message: 'ID do checklist é obrigatório', statusCode: 400 }
+      }
+      if (checklist.status !== 'maintenance') {
+        throw { type: 'BusinessError', message: 'Checklist não está em status de manutenção' }
+      }
+
+      const affectedRows = await Checklist.updateStatus(checklist_id, 'pending', connection)
+      if (affectedRows === 0) {
+        throw { type: 'UpdateError', message: 'error ao atualizar o checklist' }
+      }
+
+      if (updateData) {
+        const detailsAffectedRows = await Checklist.updateChecklistDetails(
+          checklist_id,
+          updateData,
+          connection
+        )
+        if (!currentChecklist) {
+          throw { type: 'NotFoundError', message: 'Checklist não encontrado' }
+        }
+        if (detailsAffectedRows === 0) {
+          throw { type: 'UpdateError', message: 'error ao atualizar os detalhes do checklist' }
+        }
+      }
+      await connection.commit()
+
+      return {
+        success: true,
+        data: {
+          checklist_id,
+          message: updateData
+            ? 'checklist aprovado, detalhes atualizados e liberado com sucesso'
+            : 'checklist aprovado e liberado com sucesso'
+        }
+      }
+    } catch (error) {
+      if (connection) await connection.rollback()
+      throw this.handleError(error, 'error ao alterar checklist')
+    } finally {
+      if (connection) connection.release()
     }
   }
 

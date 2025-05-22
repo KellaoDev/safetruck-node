@@ -1,6 +1,83 @@
 const ChecklistService = require('../services/CheckListService');
 
 const ChecklistController = {
+  async findAll(req, res) {
+    try {
+      const result = await ChecklistService.findAll();
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.data,
+        meta: result.metadata
+      });
+    } catch (error) {
+      throw this.handleError(error, 'error ao buscar todos os checklists')
+    }
+  },
+
+  async findByUserId(req, res) {
+    try {
+      const user_id = req.user.id
+      const result = await ChecklistService.findByUserId(user_id)
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.data,
+        meta: result.metadata
+      })
+
+    } catch (error) {
+      throw this.handleError(error, 'error ao buscar checklist por usuario')
+    }
+  },
+
+  async getPendingChecklists(req, res) {
+    try {
+      const result = await ChecklistService.getPendingChecklists();
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.data,
+        meta: result.metadata
+      })
+    } catch (error) {
+      throw this.handleError(error, 'error ao buscar checklists pendentes')
+    }
+  },
+
+  async getReleaseChecklists(req, res) {
+    try {
+      const result = await ChecklistService.getReleaseChecklists();
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.data,
+        meta: result.metadata
+      })
+    } catch (error) {
+      throw this.handleError(error, 'error ao buscar checklists liberados')
+    }
+  },
+
+  async getReturnChecklists(req, res) {
+    try {
+      const result = await ChecklistService.getReturnChecklists();
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.data,
+        meta: result.metadata
+      })
+    } catch (error) {
+      throw this.handleError(error, 'error ao buscar checklists retornados')
+    }
+  },
+
   async create(req, res) {
     try {
       const { plates, headlights, brakes, tires } = req.body
@@ -14,133 +91,14 @@ const ChecklistController = {
         tires
       })
 
-      return res.status(201).json(result)
-    } catch (error) {
-      console.error('Error in ChecklistController.create:', error)
-
-      const statusCode = error.statusCode || 500
-      const errorMessage = error.message || 'Erro ao criar checklist'
-
-      return res.status(statusCode).json({
-        success: false,
-        message: errorMessage,
-        errorType: error.type || 'InternalError'
-      })
-    }
-  },
-
-  async approveMaintenance(req, res) {
-    try {
-      const { checklist_id } = req.body;
-      const user_id = req.user.id
-
-      const result = await ChecklistService.approveMaintenance(checklist_id, user_id);
-      res.status(200).json(result);
-    } catch (error) {
-      const statusCode = error.type === 'NotFoundError' ? 404 :
-        error.type === 'BusinessError' ? 400 : 500;
-      res.status(statusCode).json({
-        success: false,
-        message: error.message || 'Erro ao aprovar checklist',
-        errorType: error.type || 'InternalError'
-      });
-    }
-  },
-
-  async findAll(req, res) {
-    try {
-      const result = await ChecklistService.findAll();
-
-      return res.status(200).json({
-        success: true,
-        message: result.message,
-        data: result.data,
-        meta: result.metadata
-      });
-    } catch (error) {
-      console.error('Error in ChecklistController.findAll:', error);
-
-      const statusCode = error.statusCode || 500;
-      return res.status(statusCode).json({
-        success: false,
-        message: error.message || 'Erro ao buscar checklists',
-        errorType: error.type || 'InternalError'
-      });
-    }
-  },
-
-  async findByUserId(req, res) {
-    try {
-      const user_id = req.user.id
-
-      const result = await ChecklistService.findByUserId(user_id)
-
       return res.status(200).json({
         success: true,
         message: result.message,
         data: result.data,
         meta: result.metadata
       })
-
     } catch (error) {
-      console.error('Error in ChecklistController.findByUserId:', error)
-
-      const statusCode = error.statusCode || 500
-      const errorMessage = error.message || 'Erro ao buscar checklists'
-
-      return res.status(statusCode).json({
-        success: false,
-        message: errorMessage,
-        errorType: error.type || 'InternalError'
-      })
-    }
-  },
-
-  async getPendingChecklists(req, res) {
-    try {
-      const result = await ChecklistService.getPendingChecklists();
-
-      return res.status(200).json(result);
-    } catch (error) {
-      console.error('Error in ChecklistController.getPendingChecklists:', error);
-
-      return res.status(error.statusCode || 500).json({
-        success: false,
-        message: error.message || 'Erro interno no servidor',
-        details: error.type || 'UnknownError'
-      });
-    }
-  },
-
-  async getReleaseChecklists(req, res) {
-    try {
-      const result = await ChecklistService.getReleaseChecklists();
-
-      return res.status(200).json(result);
-    } catch (error) {
-      console.error('Error in ChecklistController.getReleaseChecklists:', error);
-
-      return res.status(error.statusCode || 500).json({
-        success: false,
-        message: error.message || 'Erro interno no servidor',
-        details: error.type || 'UnknownError'
-      });
-    }
-  },
-
-  async getReturnChecklists(req, res) {
-    try {
-      const result = await ChecklistService.getReturnChecklists();
-
-      return res.status(200).json(result);
-    } catch (error) {
-      console.error('Error in ChecklistController.getReturnChecklists:', error);
-
-      return res.status(error.statusCode || 500).json({
-        success: false,
-        message: error.message || 'Erro interno no servidor',
-        details: error.type || 'UnknownError'
-      });
+      throw this.handleError(error, 'error ao criar checklist')
     }
   },
 
@@ -154,21 +112,11 @@ const ChecklistController = {
       return res.status(200).json({
         success: true,
         message: result.message,
-        data: result.data
+        data: result.data,
+        meta: result.metadata
       })
-
     } catch (error) {
-      console.error('Error in ChecklistController.release:', error)
-
-      const statusCode = error.statusCode || 500
-      const errorMessage = error.message || 'Erro ao liberar checklist'
-
-      return res.status(statusCode).json({
-        success: false,
-        message: errorMessage,
-        errorType: error.type || 'InternalError',
-        ...(error.details && { details: error.details })
-      })
+      throw this.handleError(error, 'error ao marcar checklist como liberado')
     }
   },
 
@@ -182,20 +130,42 @@ const ChecklistController = {
       return res.status(200).json({
         success: true,
         message: result.message,
-        data: result.data
+        data: result.data,
+        meta: result.metadata
       })
-
     } catch (error) {
-      console.error('Error in ChecklistController.return:', error)
+      throw this.handleError(error, 'error ao marcar checklist como retornado')
+    }
+  },
 
-      const statusCode = error.statusCode || 500
-      const errorMessage = error.message || 'Erro ao marcar checklist como devolvido'
+  async approveMaintenance(req, res, next) {
+    try {
+      const { checklist_id } = req.params;
+      const user_id = req.user.id;
+      const updateData = req.body;
 
-      return res.status(statusCode).json({
-        success: false,
-        message: errorMessage,
-        errorType: error.type || 'InternalError'
+      const result = await ChecklistService.approveMaintenance(
+        checklist_id,
+        user_id,
+        updateData
+      )
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.data,
+        meta: result.metadata
       })
+    } catch (error) {
+      throw this.handleError(error, 'error ao alterar checklist')
+    }
+  },
+
+  async handleError(error, defaultMessage) {
+    return {
+      type: error.type || 'INTERNAL_ERROR',
+      message: error.message || defaultMessage,
+      statusCode: error.statusCode || 500
     }
   }
 }
