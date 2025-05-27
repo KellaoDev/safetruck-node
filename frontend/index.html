@@ -1,35 +1,20 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR"> <!-- Define o idioma da página -->
 
 <head>
-  <meta charset="UTF-8">
-  <title>Login - SafeTruck</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-  <link rel="stylesheet" href="./src/styles/index.css">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8"> <!-- Define a codificação de caracteres -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Responsividade -->
+  <meta name="description" content="Minha aplicação Vue.js"> <!-- Descrição para SEO -->
+  <title>SafeTruck</title> <!-- Título da aba do navegador -->
+  <!-- CSS global (opcional) -->
 </head>
 
 <body>
-  <div class="container">
-    <div class="box">
-      <h1>Login</h1>
-      <form>
-        <div class="items">
-          <label for="email">E-mail:</label>
-          <input type="email" id="email" required><br>
-        </div>
+  <!-- ⚡ Div onde o Vue será montado -->
+  <div id="app"></div>
 
-        <div class="items">
-          <label for="password">Senha:</label>
-          <input type="password" id="password" required><br>
-        </div>
-
-        <button type="submit">Entrar</button>
-      </form>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Script principal (gerado pelo Vue) -->
+  <script type="module" src="./src/main.js"></script>
 </body>
 
 </html>

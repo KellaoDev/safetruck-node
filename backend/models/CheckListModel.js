@@ -3,9 +3,12 @@ const pool = require('../config/database');
 class Checklist {
   static async findAll(connection = null) {
     try {
-      const query = `SELECT id, user_id, plates, headlights, brakes, tires, status, date_checklist
-      FROM checklist 
-      ORDER BY date_checklist DESC`
+      const query = `SELECT c.id, c.user_id, c.plates, c.headlights, c.brakes, c.tires, c.status, c.date_checklist,
+      u.username
+      FROM checklist c
+      JOIN users u ON c.user_id = u.id
+      ORDER BY c.date_checklist DESC
+    `
 
       const [rows] = connection ?
         await connection.query(query) :
@@ -17,13 +20,115 @@ class Checklist {
     }
   }
 
-  static async findByUserId(user_id, connection = null) {
+  static async findByUserId(user_id, status = 'pending', connection = null) {
     try {
       const query = `SELECT id, user_id, plates, headlights, brakes, tires, status, date_checklist
       FROM checklist 
-      WHERE user_id = ? 
+      WHERE user_id = ? AND status =?
       ORDER BY date_checklist DESC`
-      const params = [user_id]
+      const params = [user_id, status]
+
+      const [rows] = connection ?
+        await connection.query(query, params) :
+        await pool.query(query, params)
+
+      return rows
+    } catch (error) {
+      throw error
+    }
+  }
+
+  static async getPendingAndMaintenanceChecklists(statuses = ['pending', 'maintenance'], connection = null) {
+    try {
+      const placeholders = statuses.map(() => '?').join(', ')
+      const query = `SELECT c.id, c.user_id, c.plates, c.headlights, c.brakes, c.tires, c.status, c.date_checklist,
+        u.username
+        FROM checklist c
+        JOIN users u ON c.user_id = u.id
+        WHERE c.status IN (${placeholders})
+        ORDER BY c.date_checklist DESC`
+      const params = statuses
+
+      const [rows] = connection ?
+        await connection.query(query, params) :
+        await pool.query(query, params)
+
+      return rows
+    } catch (error) {
+      throw error
+    }
+  }
+
+  static async getReleaseChecklists(status = 'released', connection = null) {
+    try {
+      const query = `SELECT c.id, c.user_id, c.plates, c.headlights, c.brakes, c.tires, c.status, 
+       c.date_checklist, u.username, ctrl.date_released
+      FROM checklist c
+      JOIN users u ON c.user_id = u.id
+      JOIN control ctrl ON ctrl.checklist_id = c.id
+      WHERE c.status = ?
+      ORDER BY ctrl.date_released DESC`
+      const params = [status]
+
+      const [rows] = connection ?
+        await connection.query(query, params) :
+        await pool.query(query, params)
+
+      return rows
+    } catch (error) {
+      throw error
+    }
+  }
+
+  static async getPendingChecklists(status = 'pending', connection = null) {
+    try {
+      const query = `SELECT c.id, c.user_id, c.plates, c.headlights, c.brakes, c.tires, c.status, c.date_checklist,
+      u.username
+      FROM checklist c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.status = ?
+      ORDER BY date_checklist DESC`
+      const params = [status]
+
+      const [rows] = connection ?
+        await connection.query(query, params) :
+        await pool.query(query, params)
+
+      return rows
+    } catch (error) {
+      throw error
+    }
+  }
+
+  static async getReturnChecklists(status = 'returned', connection = null) {
+    try {
+      const query = `SELECT c.id, c.user_id, c.plates, c.headlights, c.brakes, c.tires, c.status, c.date_checklist,
+      u.username
+      FROM checklist c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.status = ?
+      ORDER BY date_checklist DESC`
+      const params = [status]
+
+      const [rows] = connection ?
+        await connection.query(query, params) :
+        await pool.query(query, params)
+
+      return rows
+    } catch (error) {
+      throw error
+    }
+  }
+
+  static async getMaintenanceChecklists(status = 'maintenance', connection = null) {
+    try {
+      const query = `SELECT c.id, c.user_id, c.plates, c.headlights, c.brakes, c.tires, c.status, c.date_checklist,
+      u.username
+      FROM checklist c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.status = ?
+      ORDER BY date_checklist DESC`
+      const params = [status]
 
       const [rows] = connection ?
         await connection.query(query, params) :
@@ -69,12 +174,10 @@ class Checklist {
     }
   }
 
-  static async getPendingChecklists(status = 'pending', connection = null) {
+  static async findDetailsById(checklist_id, connection = null) {
     try {
-      const query = `SELECT id, user_id, status
-      FROM checklist 
-      WHERE status = ?`
-      const params = [status]
+      const query = `SELECT plates, headlights, brakes, tires FROM checklist WHERE id = ?`
+      const params = [checklist_id]
 
       const [rows] = connection ?
         await connection.query(query, params) :
@@ -86,35 +189,33 @@ class Checklist {
     }
   }
 
-  static async getReleaseChecklists(status = 'released', connection = null) {
+  static async getChecklistsByDateRange(startDate, endDate, connection = null) {
     try {
-      const query = `SELECT id, user_id, status
-      FROM checklist 
-      WHERE status = ?`
-      const params = [status]
+      const query = `
+                SELECT 
+                    c.plates AS Placa,
+                    u.username AS Motorista,
+                    c.date_checklist AS "Data do Checklist",
+                    ct.date_released AS "Data de Liberação",
+                    ct.date_returned AS "Data de Retorno"
+                FROM 
+                    CHECKLIST c
+                JOIN 
+                    USERS u ON c.user_id = u.id
+                LEFT JOIN 
+                    CONTROL ct ON ct.checklist_id = c.id
+                WHERE 
+                    c.date_checklist BETWEEN ? AND ?
+                ORDER BY 
+                    c.date_checklist DESC
+            `
+      const params = [startDate, endDate]
 
       const [rows] = connection ?
         await connection.query(query, params) :
         await pool.query(query, params)
 
-      return rows[0]
-    } catch (error) {
-      throw error
-    }
-  }
-
-  static async getReturnChecklists(status = 'returned', connection = null) {
-    try {
-      const query = `SELECT id, user_id, status
-      FROM checklist 
-      WHERE status = ?`
-      const params = [status]
-
-      const [rows] = connection ?
-        await connection.query(query, params) :
-        await pool.query(query, params)
-
-      return rows[0]
+      return rows
     } catch (error) {
       throw error
     }
@@ -160,7 +261,7 @@ class Checklist {
 
   static async updateStatus(status, checklist_id, connection = null) {
     try {
-      const query = `UPDATE checklist 
+      const query = `UPDATE CHECKLIST 
       SET status = ? 
       WHERE id = ?`
       const params = [status, checklist_id]
@@ -175,7 +276,7 @@ class Checklist {
     }
   }
 
-  static async updateControlRecord(date_returned, checklist_id) {
+  static async updateControlRecord(date_returned, checklist_id, connection = null) {
     try {
       const query = `UPDATE CONTROL 
       SET date_returned = ? 
@@ -192,15 +293,14 @@ class Checklist {
     }
   }
 
-  static async updateChecklistDetails(checklist_id, updateData, connection = null) {
+  static async updateChecklistDetails(updateData, checklist_id, connection = null) {
     try {
-      const { user_id, plates, headlights, brakes, tires } = updateData
+      const { plates, headlights, brakes, tires } = updateData
 
-      const query = `UPDATE checklist 
-      SET user_id = ?, plates = ?, headlights = ?, brakes = ?, tires = ?
-      WHERE id = ?
-      `
-      const params = [user_id, plates, headlights, brakes, tires, checklist_id]
+      const query = `UPDATE checklist
+            SET plates = ?, headlights = ?, brakes = ?, tires = ?
+            WHERE id = ?`
+      const params = [plates, headlights, brakes, tires, checklist_id]
 
       const [result] = connection ?
         await connection.query(query, params) :

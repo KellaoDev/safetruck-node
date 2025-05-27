@@ -1,5 +1,13 @@
 const AuthService = require('../services/AuthService');
 
+function handleError(error, defaultMessage) {
+  return {
+    type: error.type || 'INTERNAL_ERROR',
+    message: error.message || defaultMessage,
+    statusCode: error.statusCode || 500
+  }
+}
+
 const AuthController = {
   async create(req, res) {
     const { cpf, username, email, password, role } = req.body
@@ -20,7 +28,12 @@ const AuthController = {
         meta: result.metadata
       })
     } catch (error) {
-      throw this.handleError(error, 'error ao criar usuário')
+      const formattedError = handleError(error, 'Erro ao criar usuário')
+      return res.status(formattedError.statusCode).json({
+        success: false,
+        type: formattedError.type,
+        message: formattedError.message
+      })
     }
   },
 
@@ -32,25 +45,22 @@ const AuthController = {
       return res.status(200).json({
         success: true,
         message: result.message,
-        data: result.data,
+        data: {
+          user: result.user,
+          token: result.token,
+          expiresIn: result.expiresIn
+        },
         meta: result.metadata
       })
     } catch (error) {
-      throw this.handleError(error, 'error ao logar usuário')
+      const formattedError = handleError(error, 'Erro ao logar usuário')
+      return res.status(formattedError.statusCode).json({
+        success: false,
+        type: formattedError.type,
+        message: formattedError.message
+      })
     }
   },
-
-  profile(req, res) {
-    res.json({ message: `Usuário autenticado. ID: ${req.user.id}, Role: ${req.user.role}` })
-  },
-
-  async handleError(error, defaultMessage) {
-    return {
-      type: error.type || 'INTERNAL_ERROR',
-      message: error.message || defaultMessage,
-      statusCode: error.statusCode || 500
-    }
-  }
 }
 
 module.exports = AuthController;
